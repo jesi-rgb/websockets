@@ -1,5 +1,15 @@
 const TOPIC = 'realtime'
-const MESSAGES: string[] = []
+interface Cursor {
+	id: number;
+	position: {
+		x: number; y: number
+	}
+}
+interface Position {
+	x: number; y: number
+}
+
+const CURSORS: Record<number, Position | null> = {}
 
 const server = Bun.serve<{ username: string }>({
 	fetch(req, server) {
@@ -16,20 +26,24 @@ const server = Bun.serve<{ username: string }>({
 		return new Response("Hello world");
 	},
 	websocket: {
-		async open(ws) {
+		open(ws) {
+			const id = parseInt(ws.data.username)
+			console.log(`${id} has joined the party`)
 			ws.subscribe(TOPIC);
-			server.publish(TOPIC, JSON.stringify(MESSAGES));
+			ws.send(id.toString())
+			CURSORS[id] = { x: 0, y: 0 };
 		},
-		async message(ws, message) {
-			const newMessage = `${ws.data.username}: ${message}`
-			MESSAGES.push(newMessage)
-
-			server.publish(TOPIC, JSON.stringify(MESSAGES));
+		message(ws, message) {
+			const cursorData = JSON.parse(message as string)
+			CURSORS[parseInt(cursorData.id)] = cursorData.position
+			server.publish(TOPIC, JSON.stringify(CURSORS));
 		},
 		close(ws) {
-			const msg = `${ws.data.username} has left the chat`;
+			const id = parseInt(ws.data.username)
+			console.log(`unsuscribing ${id}`, CURSORS)
+			delete CURSORS[id]
 			ws.unsubscribe(TOPIC);
-			server.publish(TOPIC, msg);
+			console.log(CURSORS)
 		},
 	},
 });

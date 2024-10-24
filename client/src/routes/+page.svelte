@@ -1,53 +1,39 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
+	let cursors = $state({});
 	let socket: WebSocket;
 
-	let inputMessage = $state('');
-	let messages: string[] = $state([]);
+	let id = $state('');
+	let position = $state({});
 
-	let inputElement: HTMLInputElement;
-
-	// Connect to the WebSocket server when the component loads
 	onMount(() => {
 		socket = new WebSocket('ws://localhost:3000/chat');
 
-		socket.onopen = (event) => {
-			console.log(event);
+		socket.onmessage = (event) => {
+			if (parseInt(event.data)) {
+				id = event.data;
+				console.log(id);
+				return;
+			}
+
+			cursors = JSON.parse(event.data);
 		};
 
-		socket.onmessage = async (event) => {
-			messages = JSON.parse(event.data).reverse();
-		};
+		window.addEventListener('mousemove', (e) => {
+			position = { x: e.clientX, y: e.clientY };
+			const message = JSON.stringify({ id, position });
+			socket.send(message);
+		});
 	});
-
-	function sendMessage(e) {
-		e.preventDefault();
-		socket.send(inputMessage);
-		inputMessage = '';
-		inputElement.focus();
-	}
 </script>
 
-<form onsubmit={sendMessage}>
-	<input
-		bind:this={inputElement}
-		bind:value={inputMessage}
-		class="input input-bordered"
-		type="text"
-		onsubmit={sendMessage}
-	/>
-	<button class="btn">yea</button>
-</form>
-
-<ul
-	class="list-disc list-inside overflow-y-scroll max-h-96 border
-	border-base-content rounded-xl p-3"
->
-	{#each messages as m}
-		<li>
-			{m}
-		</li>
+<div>
+	{#each Object.entries(cursors) as [id, position]}
+		<div
+			class="absolute bg-secondary size-10 rounded-full"
+			style="left: {position.x}px; top: {position.y}px"
+			{id}
+		></div>
 	{/each}
-	<li></li>
-</ul>
+</div>
