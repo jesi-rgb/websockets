@@ -9,7 +9,9 @@ interface Position {
 	x: number; y: number
 }
 
-const CURSORS: Record<number, Position | null> = {}
+const CURSORS: Record<number, { position: Position, it: boolean }> = {}
+let CONNECTIONS = 0
+let IT = 1;
 
 const server = Bun.serve<{ username: string }>({
 	fetch(req, server) {
@@ -30,20 +32,31 @@ const server = Bun.serve<{ username: string }>({
 			const id = parseInt(ws.data.username)
 			console.log(`${id} has joined the party`)
 			ws.subscribe(TOPIC);
-			ws.send(id.toString())
-			CURSORS[id] = { x: 0, y: 0 };
+			CONNECTIONS += 1
+			CURSORS[id] = { position: { x: 0, y: 0 }, it: false };
+
+			if (IT > 0 && Math.random() > 0.1) {
+				CURSORS[id].it = true
+				IT--;
+
+			}
+
+			const openMessage = { id: id.toString() }
+			ws.send(JSON.stringify(openMessage))
 		},
 		message(ws, message) {
 			const cursorData = JSON.parse(message as string)
+			console.log(cursorData)
+
 			CURSORS[parseInt(cursorData.id)] = cursorData.position
-			server.publish(TOPIC, JSON.stringify(CURSORS));
+			server.publish(TOPIC, JSON.stringify({ CURSORS, connections: CONNECTIONS }));
 		},
 		close(ws) {
 			const id = parseInt(ws.data.username)
 			console.log(`unsuscribing ${id}`, CURSORS)
 			delete CURSORS[id]
 			ws.unsubscribe(TOPIC);
-			console.log(CURSORS)
+			CONNECTIONS -= 1
 		},
 	},
 });
