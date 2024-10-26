@@ -33,7 +33,7 @@ const server = Bun.serve<{ username: string }>({
 			console.log(`${id} has joined the party`)
 			ws.subscribe(TOPIC);
 			CONNECTIONS += 1
-			CURSORS[id] = { position: { x: 0, y: 0 }, it: false };
+			CURSORS[id] = { position: { x: 100, y: 100 }, it: false };
 
 			if (IT > 0 && Math.random() > 0.1) {
 				CURSORS[id].it = true
@@ -46,9 +46,8 @@ const server = Bun.serve<{ username: string }>({
 		},
 		message(ws, message) {
 			const cursorData = JSON.parse(message as string)
-			console.log(cursorData)
 
-			CURSORS[parseInt(cursorData.id)] = cursorData.position
+			CURSORS[parseInt(cursorData.id)].position = cursorData.position
 			server.publish(TOPIC, JSON.stringify({ CURSORS, connections: CONNECTIONS }));
 		},
 		close(ws) {
