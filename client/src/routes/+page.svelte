@@ -12,16 +12,32 @@
 
 	let id = $state('');
 	let tweenedPos = tweened<Position>({ x: 0, y: 0 }, { duration: 5700 });
-	let position: Position = { x: 0, y: 0 };
+	let position: Position;
 	let connections = $state(0);
 	let it = $state(false);
+
+	function sendPosition() {
+		console.log(socket);
+		const message = JSON.stringify({ id, position: $tweenedPos });
+		socket.send(message);
+	}
+
+	let start: number;
+
+	function step(timestamp: number) {
+		const elapsed = timestamp - start;
+
+		if (elapsed % 1000 == 0) {
+			sendPosition();
+		}
+		requestAnimationFrame(step);
+	}
 
 	onMount(() => {
 		socket = new WebSocket('ws://localhost:3000/chat');
 
 		socket.onmessage = (event) => {
 			const data = JSON.parse(event.data);
-			console.log(data);
 
 			if (parseInt(data.id)) {
 				id = data.id;
@@ -29,16 +45,18 @@
 			}
 
 			cursors = data.CURSORS;
+
 			it = cursors[parseInt(id)].it;
 			connections = data.connections;
 		};
 
-		window.addEventListener('mousemove', (e) => {
-			position = { x: e.clientX, y: e.clientY };
-			tweenedPos.set(position);
+		requestAnimationFrame((timestamp) => {
+			start = timestamp;
+			step(timestamp);
+		});
 
-			const message = JSON.stringify({ id, position: $tweenedPos });
-			socket.send(message);
+		window.addEventListener('mousemove', (event) => {
+			position = { x: event.clientX, y: event.clientY };
 		});
 	});
 </script>
@@ -48,7 +66,7 @@
 	{#each Object.entries(cursors) as [id, pos]}
 		<div
 			class="absolute bg-secondary size-10 rounded-full"
-			style="left: {pos.x}px; top: {pos.y}px; background-color: {it
+			style="left: {pos.position.x}px; top: {pos.position.y}px; background-color: {it
 				? 'var(--player-it)'
 				: 'var(--player-normal)'}"
 			{id}
