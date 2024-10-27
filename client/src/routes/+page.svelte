@@ -10,14 +10,14 @@
 	let cursors = $state<Record<number, { position: Position; it: boolean }>>({});
 	let socket: WebSocket;
 
-	let id = $state('');
+	let id = $state(0);
 	let tweenedPos = tweened<Position>({ x: 0, y: 0 }, { duration: 5700 });
 	let position: Position;
 	let connections = $state(0);
 	let it = $state(false);
 
 	function sendPosition() {
-		console.log(socket);
+		console.log({ id: id, position: $tweenedPos });
 		const message = JSON.stringify({ id, position: $tweenedPos });
 		socket.send(message);
 	}
@@ -40,13 +40,13 @@
 			const data = JSON.parse(event.data);
 
 			if (parseInt(data.id)) {
-				id = data.id;
+				id = parseInt(data.id);
 				return;
 			}
 
 			cursors = data.CURSORS;
 
-			it = cursors[parseInt(id)].it;
+			it = cursors[id].it;
 			connections = data.connections;
 		};
 
